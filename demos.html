@@ -1,0 +1,862 @@
+<html>
+<head>
+    <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" >
+    <title>Bernie's Better Animation Class</title>
+    <script type="text/javascript" src="animator.js"></script>
+    <link href="../include/style.css" rel="stylesheet" type="text/css" media="all">
+<script type="text/javascript">
+window.ANIMATOR_DEBUG = true;
+</script>
+
+<style>
+    .foo {
+        background-color: #CCAA88;
+        width: 200px;
+    }
+    .exampleSubjects {
+        background-color: #395;
+        margin-left: 10px;
+    }
+    pre {
+        border: solid 1px #3C6AD2;
+        background-color: #DDDDDD;
+        padding: 10px;
+    }
+    button {
+        border: solid 1px black;
+        background-color: #FFFFFF;
+        vertical-align: middle;
+        text-align: center;
+        padding: 5px;
+    }
+    .small {
+        width: 250px;
+    }
+    .big {
+        width: 500px;
+    }
+    .white {
+        background-color: #FFFFFF;
+        color: #000000;
+        font-style: normal;
+    }
+    .blue {
+        background-color: #3366CC;
+        color: #FFFFFF;
+        font-style: italic;
+    }
+    .bendy {
+        font-style: italic;
+    }
+    .greenish {
+        background-color: #3F9;
+    }
+    .blobStart {
+        width: 20px;
+        height: 20px;
+        background-color: #FFFFFF;
+        border: solid 1px #000000;
+        margin-top: 10px;
+    }
+    .blobEnd {
+        width: 20px;
+        height: 20px;
+        background-color: #FF0000;
+        border: solid 1px #000000;
+        margin-top: 10px;
+    }
+</style>
+</head>
+
+<body>
+
+<p>Animator.js was a library I wrote back in 1996 to handle animation on web pages. For a time it was quite ahead of the curve: I believe it was the first library to feature CSS morphing - the ability to smoothly transition between two styles defined as CSS classes.</p>
+
+<p>The world of JavaScript has moved on a lot since then. The ideas presented in it have now been incorporated into most of the major JavaScript frameworks, either by directly incorporating the code of Animator.js (it's lisenced under a BSD lisence that allows people to do this) or by copying the techniques. Animator.js has served its purpose, and most people will be better served by a general purpose JavaScript framework: I recommend jQuery.</p>
+
+<p>I'm keeping this page up here for historical interest, and because Animator.js may still be of interest to people who want a small, fast library that does animation and nothing else.</p>
+
+<hr>
+
+<p>Thanks to Tim Stone, Kaspar Fischer, Clint Priest and other developes who contributed feedback and features.</p>
+
+<p>In this article I describe <code>Animator</code>, a class for creating animated effects &agrave; la <a href="http://moofx.mad4milk.net/">moofx</a> or <a href="http://script.aculo.us/">scriptaculous</a>.</p>
+
+<p>Right-click here to download <a href="../include/animator.js">Animator.js version 1.1.9</a>, released under the BSD license (i.e. use it however you like).</p>
+
+
+
+
+
+
+<h2>Background and motivation</h2>
+
+<p><em>I've removed this section because it contained criticisms of other JavaScript libraries that were true in 2006, but not today. I also took the opportunity to rant on the topic of object-oriented inheritance, which was a topic I explored in greater length in the article "Inheritance is Evil and Must Be Destroyed" &lt;link&gt;</em> - Bernie Sumption, 2010</p>
+
+
+
+
+
+
+<h2>A better way of animating</h2>
+
+<p>An Animator is an object that generates a series of nunbers between zero and one. Zero represents the start of the animation, one the end.</p>
+
+<p>Check this out:</p>
+
+<!-- EXAMPLE EX1 -->
+
+<pre lang="javascript">
+// This object controls the progress of the animation
+ex1 = new Animator()
+// the Animator's subjects define its behaviour
+ex1.addSubject(updateButton);
+function updateButton(value) {
+    var button = document.getElementById("ex1Button");
+    button.innerHTML = "Progress: " + Math.round(value * 100) + "%";
+}
+// now click below: each click to the button calls ex1.toggle()
+</pre>
+
+<p><button onclick="ex1.toggle();" id="ex1Button">Try Me! (this calls ex1.toggle())</button></p>
+
+<script type="text/javascript">
+    ex1 = new Animator()
+    ex1.addSubject(updateButton);
+    function updateButton(value) {
+        var button = document.getElementById("ex1Button");
+        button.innerHTML = "Progress: " + Math.round(value * 100) + "%";
+    }
+</script>
+
+<p>The <code>Animator</code> above was left with the default options, here's an example that uses more configuration:</p>
+
+<!-- EXAMPLE EX2 -->
+
+<pre lang="javascript">
+ex2 = new Animator({
+    duration: 1200,
+    interval: 400,
+    onComplete: function() {
+        document.getElementById("ex2Target").innerHTML += "Bing! ";
+    }
+})
+ex2.addSubject(updateButton);
+function updateButton(value) {
+    document.getElementById("ex2Target").innerHTML += " Badda ";
+}
+</pre>
+
+<table>
+    <tr>
+        <td><button onclick="ex2.toggle();" id="Button1">Try Me too! (this calls ex2.toggle())</button></td>
+        <td id="ex2Target"></td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    ex2 = new Animator({
+        duration: 1200,
+        interval: 400,
+        onComplete: function() {
+            document.getElementById("ex2Target").innerHTML += "Bing! ";
+        }
+    })
+    ex2.addSubject(updateButton);
+    function updateButton(value) {
+        document.getElementById("ex2Target").innerHTML += " Badda ";
+    }
+</script>
+
+
+
+
+
+
+<h2>Animating element styles</h2>
+
+<p>Most of the time you want to animate one or more a style properties of an element. There are essentially only three kinds of CSS value - ones that scale numerically (like <code>10px</code>), ones that scale with a RGB colour value(like <code>#RRGGBB</code>), and ones that don't scale (like <code>bold / italic</code>). <code>Animator</code> provides three utility classes for each of these kinds of properties, and between them they can animate any CSS style.</p>
+
+<!-- EXAMPLE EX3 -->
+
+<pre lang="javascript">
+// animate margin-left from 0 to 100 px
+ex3 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        "ex3Button",
+        "margin-left",
+        0,
+        100));
+</pre>
+
+<p><button onclick="ex3.toggle();" id="ex3Button">Try me three! (this calls ex3.toggle()... you're getting the idea now right?)</button></p>
+        <script type="text/javascript">
+ex3 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        "ex3Button",
+        "margin-left",
+        0,
+        100));
+</script>
+
+<!-- EXAMPLE EX4 -->
+
+<pre lang="javascript">
+// animate background-color from white to black
+ex4 = new Animator().addSubject(
+    new ColorStyleSubject(
+        "ex4Button",
+        "background-color",
+        "#FFFFFF",
+        "#F4C"));
+</pre>
+
+<p><button onclick="ex4.toggle();" id="ex4Button">And Me!</button></p>
+<script 
+type="text/javascript">
+ex4 = new Animator().addSubject(
+    new ColorStyleSubject(
+        "ex4Button",
+        "background-color",
+        "#FFFFFF",
+        "#F4C"));
+</script>
+
+<!-- EXAMPLE EX5 -->
+
+<pre lang="javascript">
+// animating both - note how calls to addSubject() can be chained together:
+ex5 = new Animator()
+    .addSubject(
+        new NumericalStyleSubject(
+            "ex5Button",
+            "margin-left",
+            0,
+            100))
+    .addSubject(
+        new ColorStyleSubject(
+            "ex5Button",
+            "background-color",
+            "#FFFFFF",
+            "#F4C"))
+    .addSubject(
+        new DiscreteStyleSubject(
+            "ex5Button", "font-weight",
+            "normal",
+            "bold",
+            0.5));
+// also, check out the last line, which causes font-weight to switch from
+// normal to bold half way through the animation
+</pre>
+
+<p><button onclick="ex5.toggle();" id="ex5Button">Me Too!</button></p>
+
+<script type="text/javascript">
+ex5 = new Animator()
+    .addSubject(
+        new NumericalStyleSubject(
+            "ex5Button",
+            "margin-left",
+            0,
+            100))
+    .addSubject(
+        new ColorStyleSubject(
+            "ex5Button",
+            "background-color",
+            "#FFFFFF",
+            "#F4C"))
+    .addSubject(
+        new DiscreteStyleSubject(
+            "ex5Button",
+            "font-weight",
+            "normal",
+            "bold",
+            0.5));
+</script>
+
+<p>If you've ever used moofx or scriptaculous then you are probably thinking that this is quite verbose, and you'd be right. <code>Animator</code> has a killer feature that removes the verbosity, but before we get to that, here are a couple more things you can do:</p>
+
+
+
+
+
+
+<h2>More complex effects</h2>
+
+<p>What if you have a number of elements that you want to animate in the same way? In that case, pass an array of elements into the <code>Subject</code>'s constructor. There is no way to add and remove elements from a <code>Subject</code> after it has been constructed - if you want to do that, use one <code>Subject</code> for each element and use <code>addSubject()</code> and <code>removeSubject()</code> on the <code>Animator</code>.</p>
+
+<!-- EXAMPLE EX6 -->
+
+<pre lang="javascript">
+// Applying the same effect to different elements is easy
+ex6 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        ["dot1", "dot2", "dot3"],
+        "margin-left",
+        10,
+        50));
+</pre>
+
+<table>
+    <tr>
+        <td><button onclick="ex6.toggle();" ID="Button2">Stretch those dots...</button></td>
+        <td align=left"><span class="exampleSubjects" id="dot1">&nbsp;</span> <span class="exampleSubjects" id="dot2">&nbsp;</span> <span class="exampleSubjects" id="dot3">&nbsp;</span></td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+ex6 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        ["dot1", "dot2", "dot3"],
+        "margin-left",
+        10,
+        50));
+</script>
+
+<p>In previous examples, each subject has referred to the same element. This does not have to be the case:</p>
+    
+<!-- EXAMPLE EX7 -->
+
+<pre lang="javascript">
+// applying different effects to different elements is possible
+ex7 = new Animator()
+    .addSubject(
+        new ColorStyleSubject(
+            "ex5ButtonA",
+            "background-color",
+            "#FF9",
+            "#9F9"))
+    .addSubject(
+        new NumericalStyleSubject(
+            "ex5ButtonB",
+            "padding",
+            "5px",
+            "15px"));
+</pre>
+
+<p><button onclick="ex7.toggle();" id="ex5ButtonA" style="background-color: #FF9">Click either...</button> &nbsp;&nbsp;&nbsp; <button onclick="ex7.toggle();" id="ex5ButtonB" style="background-color: #FF9">...of these</button></p>
+
+<script type="text/javascript">
+ex7 = new Animator()
+    .addSubject(
+        new ColorStyleSubject(
+            "ex5ButtonA",
+            "background-color",
+            "#FF9",
+            "#9F9"))
+    .addSubject(
+        new NumericalStyleSubject(
+            "ex5ButtonB",
+            "padding",
+            "5px",
+            "15px"));
+</script>
+
+<p>Opacity gets special treatment. Since IE does not support the standard 'opacity' CSS style, NumericalStyleSubject
+will convert it into an appropriate filter.</p>
+    
+<!-- EXAMPLE EX8 -->
+
+<pre lang="javascript">
+ex8 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        "ex8Button",
+        "opacity",
+        1,
+        0.25));
+</pre>    
+
+<p><button onclick="ex8.toggle();" id="ex8Button">Fade</button></p>
+
+<script type="text/javascript">
+// On IE, "opacity: X" will be tuened into "filter: alpha(opacity=100*X)"
+ex8 = new Animator().addSubject(
+    new NumericalStyleSubject(
+        "ex8Button",
+        "opacity",
+        1,
+        0.25));
+</script>
+
+
+
+
+
+
+<h2>Controlling the animation</h2>
+
+
+<!-- EXAMPLE EX9 -->
+
+<p>When you click on a sample button in this article, you are calling toggle() on an animator object. There are a few more control functions:</p>
+<ul>
+    <li><code>play()</code> plays the animation from the start to the end
+    <li><code>reverse()</code> plays the animation in reverse
+    <li><code>seekTo(pos)</code> plays the animation from it's current position 
+    <li><code>seekFromTo(from, to)</code>
+</ul>
+
+<table>
+    <tr>
+        <td width="200"><a href="javascript:window.controlAnim.play();"><code>play()</code></a></td>
+        <td rowspan="4">
+            <div id="controlExample" style="width: 30px; border: solid 1px #6688CC; height: 20px;">0%</div>
+        </td>
+    </tr>
+    <tr>
+        <td><a href="javascript:window.controlAnim.reverse();"><code>reverse()</code></a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:window.controlAnim.seekTo(0.5);"><code>seekTo(0.5)</code></a></td>
+    </tr>
+    <tr>
+        <td><a href="javascript:controlAnim.seekFromTo(0.25, 0.75);"><code>seekFromTo(0.25, 0.75)</code></a></td>
+    </tr>
+</table>
+
+<script type="text/javascript">
+    window.controlAnim = new Animator({
+        duration: 2000,
+        onStep: function() {document.getElementById("controlExample").innerHTML = Math.round(this.state * 100) + "%"}
+    }).addSubject(
+        new NumericalStyleSubject(document.getElementById("controlExample"), 'width', 30, 230)
+    );
+</script>
+
+<p>The benefit of using seekTo() is that it wil avoid sudden jumps in state when called half way through an animation:</p>
+
+<div id="controlExample2" style="background-color: #AAA; width: 200px; margin-bottom: 10px; padding: 10px;">this div uses play() and reverse on mouseover and mouseout</div>
+
+<div id="controlExample3" style="background-color: #AAA; width: 200px; padding: 10px;">this div uses seekTo(1) and seekTo(0) on mouseover and mouseout</div>
+
+<script type="text/javascript">
+    var anim2 = Animator.apply(document.getElementById("controlExample2"), "background-color: #FF00FF", {duration: 1000});
+    document.getElementById("controlExample2").onmouseover = function(){anim2.play()};
+    document.getElementById("controlExample2").onmouseout = function(){anim2.reverse()};
+    var anim3 = Animator.apply(document.getElementById("controlExample3"), "background-color: #FF00FF", {duration: 1000});
+    document.getElementById("controlExample3").onmouseover = function(){anim3.seekTo(1)};
+    document.getElementById("controlExample3").onmouseout = function(){anim3.seekTo(0)};
+</script>
+
+
+
+
+
+
+<h2>Transitions</h2>
+
+<p>A transition is a function that takes a state (a number between 0 and 1) and returns another number
+between 0 and 1. This can be used to simulate acceleration, deceleration and more complex effects. You can pass in a transition to an <code>Animator</code> object's constructor using the
+cleverly named <code>transition</code> property.</p>The Animator.tx object provides a few ready made transitions:
+
+<ul>
+    <li><code>Animator.tx.easeInOut</code> is the default transition, and creates a smooth effect
+    <li><code>Animator.tx.linear</code> maintains a constant rate of animation
+    <li><code>Animator.tx.easeIn</code> starts slow, gets faster
+    <li><code>Animator.tx.strongEaseIn</code> exaggerated version of the above
+    <li><code>Animator.tx.easeOut</code> starts fast, gets slower
+    <li><code>Animator.tx.strongEaseOut</code> exaggerated version of the above
+    <li><code>Animator.tx.elastic</code> go slightly past the target point, then be drawn back
+    <li><code>Animator.tx.veryElastic</code> as above, but with an extra pass<li><code>Animator.tx.bouncy</code> Hit the target point then bounce back
+    <li><code>Animator.tx.veryBouncy</code> as above, but with an extra 2 bounces
+</ul>
+
+<p>Sometimes you'll want to fine tune the above transitions. If you look at the source code where the Animator.tx object is created, you'll see that the above functions are all made by four factory functions:</p>
+
+
+
+<h3>Animator.makeEaseIn()</h3>
+
+<!-- EXAMPLE EX9 -->
+
+<pre lang="javascript">
+// make a transition that gradually accelerates. pass in 1 for smooth
+// gravitational acceleration, higher values for an exaggerated effect
+ex9 = new Animator({
+    transition: Animator.makeEaseIn(3),
+    duration: 1000
+});
+ex9.addSubject(
+    new NumericalStyleSubject(
+        "ex9Button",
+        "margin-left",
+        0,
+        200));
+</pre>
+
+<p><button onclick="ex9.toggle();" id="ex9Button">Ease me Ease me bay-beehee <span class="disclaimer">(sorry)</span></button></p>
+
+<script type="text/javascript">
+ex9 = new Animator({
+    transition: Animator.makeEaseIn(3),
+    duration: 1000
+});
+ex9.addSubject(
+    new NumericalStyleSubject(
+        "ex9Button",
+        "margin-left",
+        0,
+        200));
+</script>
+
+
+
+<h3>Animator.makeElastic()</h3>
+
+<!-- EXAMPLE EX10 -->
+
+<pre lang="javascript">
+// make a transition that, like an object with momentum being attracted
+// to a target point, goes past the target then returns
+ex10 = new Animator({
+    transition: Animator.makeElastic(3),
+    duration: 2000
+});
+ex10.addSubject(
+    new NumericalStyleSubject(
+        "ex10Button",
+        "margin-left",
+        0,
+        200));
+</pre>
+
+<p><button onclick="ex10.toggle();" id="ex10Button">And sliiiide....</button></p>
+
+<script type="text/javascript">
+ex10 = new Animator({
+    transition: Animator.makeElastic(3),
+    duration: 2000
+});
+ex10.addSubject(
+    new NumericalStyleSubject(
+        "ex10Button",
+        "margin-left",
+        0,
+        200));
+</script>
+
+
+
+<h3>Animator.makeBounce()</h3>
+
+<!-- EXAMPLE EX11 -->
+        
+<pre lang="javascript">
+// make a transition that, like a ball falling to floor, reaches
+// the target and bounces back again
+ex11 = new Animator({
+    transition: Animator.makeBounce(3),
+    duration: 2000
+});
+ex11.addSubject(
+    new NumericalStyleSubject(
+        "ex11Button",
+        "margin-left",
+        0,
+        200));
+</pre>
+
+<p><button onclick="ex11.toggle();" id="ex11Button">Boi-oi-oiiiing!</button></p>
+
+<script type="text/javascript">
+ex11 = new Animator({
+    transition: Animator.makeBounce(3),
+    duration: 2000
+});
+ex11.addSubject(
+    new NumericalStyleSubject(
+        "ex11Button",
+        "margin-left",
+        0,
+        200));
+</script>
+
+
+
+<h3>Animator.makeADSR()</h3>
+
+<p><a href="http://en.wikipedia.org/wiki/ADSR_envelope">An Attack Decay Sustain Release envelope</a> is a technique I lifted from music production. It is very useful for animations that start and end at the same value.</p>
+
+<!-- EXAMPLE EX12 -->
+        
+<pre lang="javascript">
+// This example shows you what an ADSR envelope looks like, but is otherwise useless
+// the first three arguments are the boundary points of the 4 phases. The last is the
+// sustain level. All should be between 0 and 1.
+ex12 = new Animator({
+    transition: Animator.makeADSR(0.25, 0.5, 0.75, 0.5),
+    duration: 2000
+});
+ex12.addSubject(
+    new NumericalStyleSubject(
+        "ex12Button",
+        'margin-left',
+        0,
+        400));
+</pre>
+
+<p><button onclick="ex12.play();" id="ex12Button">I can't think of a good<br>caption for this one...</button></p>
+
+<script type="text/javascript">
+ex12 = new Animator({
+    transition: Animator.makeADSR(0.25, 0.5, 0.75, 0.5),
+    duration: 2000
+});
+ex12.addSubject(
+    new NumericalStyleSubject(
+        "ex12Button",
+        "margin-left",
+        0,
+        400));
+</script>
+
+
+<p>A practical use of ADSR is to hold an animation in a certain state for a while, as in this yellow fade example</p>
+
+<!-- EXAMPLE EX13 -->
+        
+<pre lang="javascript" id="ex13" highlight="javascript">
+// This yellow fade is emphasised by holding it at full yellow
+// for the first half of the animation
+ex13= new Animator({
+    transition: Animator.makeADSR(0, 0, 0.5, 1),
+    duration: 1500
+});
+ex13.addSubject(
+    new ColorStyleSubject(
+        "ex13Button",
+        "background-color",
+        "#FFFFFF",
+        "#FFFF00"));
+</pre>
+
+<p><button onclick="ex13.play();" id="ex13Button">Or this one neither</button></p>
+
+<script type="text/javascript">
+ex13= new Animator({
+    transition: Animator.makeADSR(0, 0, 0.5, 1),
+    duration: 1500
+});
+ex13.addSubject(
+    new ColorStyleSubject(
+        "ex13Button",
+        "background-color",
+        "#FFFFFF",
+        "#FFFF00"));
+</script>
+        
+
+
+<h3>Custom functions</h3>
+
+<p>Of course, you can write your own functions that do any kind of transition:</p>
+
+<!-- EXAMPLE EX14 -->
+
+<pre lang="javascript">
+function setupEx14() {
+    var wobbles = parseInt(prompt("Enter a number of wobbles (try between 1 and 5)", ""));
+    if (!wobbles) {
+        alert("Sorry, I didn't understand that, have 2 wobbles.");
+        wobbles = 2;
+    }
+    // do some kind of crazy trigonometric stuff. I don't even know what it
+    // all means, I just went crazy with the Math functions
+    ex14Tx = function(pos) {
+        return ((-Math.cos(pos*Math.PI*((1+(2*wobbles))*pos))/2) + 0.5);
+    }
+    ex14 = new Animator({
+        transition: ex14Tx,
+        duration: 2000
+    });
+    ex14.addSubject(
+        new NumericalStyleSubject(
+            "ex14Button",
+            "margin-left",
+            0,
+            100));
+    ex14.play();
+};
+</pre>
+
+<p><button onclick="setupEx14()" id="ex14Reset">Call setupEx14()</button> &nbsp; <button onclick="if (!window.ex14Tx) { alert('Call setupEx14() first!') } else { ex14.toggle(); }" id="ex14Button">call ex14.toggle()</button></p>
+
+<script type="text/javascript">
+function setupEx14() {
+    var wobbles = parseInt(prompt("Enter a number of wobbles (try between 1 and 5)", ""));
+    if (!wobbles) {
+        alert("Sorry, I didn't understand that, have 2 wobbles.");
+        wobbles = 2;
+    }
+    // do some kind of crazy trigonometric stuff. I don't even know what it
+    // all means, I just went crazy with the Math functions
+    ex14Tx = function(pos) {
+        return ((-Math.cos(pos*Math.PI*((1+(2*wobbles))*pos))/2) + 0.5);
+    }
+    ex14 = new Animator({
+        transition: ex14Tx,
+        duration: 2000
+    });
+    ex14.addSubject(
+        new NumericalStyleSubject(
+            "ex14Button",
+            "margin-left",
+            0,
+            100));
+    ex14.play();
+};
+</script>
+
+
+
+
+
+
+<h2>The killer feature</h2>
+
+<p>I wanted to explain how Animator works under the hood before I revealed this feature.</p>
+
+<p>Like I said before, it's all a bit verbose at the moment, and most of the code in the above examples is
+just boilerplate. What we need is some kind of language that lets us define the style that we want to
+animate an object towards. Oh wait a second, we've already got one: CSS. A CSS style contains all the
+information we need to define an animation state:</p>
+
+<!-- EXAMPLE EX15 -->
+
+<pre lang="javascript">
+ex15 = new Animator().addSubject(
+    new CSSStyleSubject(
+        "ex15Button",
+        "width: 10em; background-color: rgb(256, 256, 256); font-style: normal",
+        "width: 40em; background-color: #F39; font-style: italic"));
+// note how you can use any unit, not just 'px'.
+</pre>
+
+<p><button onclick="ex15.toggle();" id="ex15Button" style="width: 10em; height: auto">Even a designer<br>could use this ;o)</button></p>
+
+<script type="text/javascript">
+ex15 = new Animator().addSubject(
+    new CSSStyleSubject(
+        "ex15Button",
+        "width: 10em; background-color: rgb(256, 256, 256); font-style: normal",
+        "width: 40em; background-color: #F39; font-style: italic"));
+// note how you can use any unit, not just 'px'.
+</script>
+
+<p><code>CSSStyleSubject</code> is a wrapper around the other three <code>Subject</code>s. It parses two CSS rule sets and for each property declaration, creates a <code>NumericalStyleSubject</code> if it looks like a number, or a <code>ColorStyleSubject</code> if it looks like a colour, or a <code>DiscreteStyleSubject</code> otherwise. <code>DiscreteStyleSubject</code>s are created with a threshold of 0.5, in other words the style changes from normal to italic half way through the animation.</p>
+
+
+<p>Conveniently, you can also pass in CSS class names instead of rule sets:</p>
+
+<!-- EXAMPLE EX16 -->
+
+<pre lang="javascript">
+ex16 = new Animator().addSubject(new CSSStyleSubject(
+    "ex16Button",
+    "small white",
+    "big blue bendy"));
+// the classes small, big, white, blue and bendy are defined in this page's source.
+</pre>
+
+<button onclick="ex16.toggle();" id="ex16Button" class="small white">
+    With this technique, you can<br>
+    keep all style information in<br>
+    .css files, where it should be.
+</button>
+
+<script type="text/javascript">
+ex16 = new Animator().addSubject(
+    new CSSStyleSubject(
+        "ex16Button",
+        "small white",
+        "big blue bendy"));
+// the classes small, big, white, blue and bendy are defined in this page's source.
+</script>
+
+<p>When you're creating animations from CSS classes, it's easy to lose track of what your animator object is doing. The <code>Animator.inspect()</code> method returns a string that describes the animator:</p>
+
+<p><button onclick="alert(ex16.inspect());">alert(ex16.inspect());</button></p>
+
+<p>This is pretty good, but we can still remove some more cruft. Most of the time, the element you want to animate
+will already be in its initial style. If this is the case, you can omit one of the rule sets and the
+initial state will be inferred from the elements current style. This uses
+<a href="http://developer.mozilla.org/en/docs/DOM:window.getComputedStyle">getComputedStyle</a> (or <a href="http://msdn.microsoft.com/workshop/author/dhtml/reference/objects/currentstyle.asp">Element.currentStyle</a> in IE) so reflects the element's actual style after applying CSS rules in style sheets.</p>
+
+<!-- EXAMPLE EX17 -->
+
+<pre lang="javascript">
+ex17 = new Animator().addSubject(
+    new CSSStyleSubject(
+        "ex17Button",
+        "width: 300px; background-color: #F39"));
+</pre>
+
+<p><button class="foo" onclick="ex17.toggle();" id="ex17Button">Die cruft, die!</button></p>
+<script type="text/javascript">
+ex17 = new Animator().addSubject(
+    new CSSStyleSubject(
+        "ex17Button",
+        "width: 300px; background-color: #F39"));
+</script>
+
+<p>Finally, there is one last bit of syntactic sugar to make it easy to apply effects. The
+
+<code>Animator.apply(element, style, options)</code> function is a wrapper around creating a
+single <code>CSSStyleSubject</code>. The second argument is the style to fade to and the third is an optional set of constructor parameters for the <code>Animator</code> object. If you want to specify the full from and to styles, pass in a two item array as the second parameter.</p>
+
+
+<!-- EXAMPLE EX18 -->
+        
+<pre lang="javascript">
+ex18 = Animator.apply("ex18Button", "greenish"); // ta da!
+</pre>
+
+<p><button onclick="ex18.toggle();" id="ex18Button">How's this for one line of code?</button></p>
+
+<script type="text/javascript">
+ex18 = Animator.apply("ex18Button", "greenish"); // ta da!
+</script>
+
+
+
+<h3>Oh go on, one more feature...</h3>
+
+<p>By popular demand... Several people asked for an easy way to chain several animations together. <code>AnimatorChain</code> is an object that behaves a bit like an <code>Animator</code>, but wraps several other <code>Animator</code> objects and causes them to play in sequence.</p>
+
+
+<!-- EXAMPLE EX19 -->
+
+<pre lang="javascript">
+var animators = [];
+for (var i=0; i&lt;3; i++) {
+    animators[i] = Animator.apply("ex18blob-" + i), "blobEnd";
+}
+ex19 = new AnimatorChain(animators);
+// the AnimatorChain object has toggle(), play(), reverse() and seekTo(state) functions
+// just like Animator objects, so you can often use them where code expects an Animator
+</pre>
+
+<p>
+    <button onclick="ex19.toggle();">ex19.toggle()</button>
+    <button onclick="ex19.play()">ex19.play()</button>
+    <button onclick="ex19.reverse();">ex19.reverse()</button>
+    <button onclick="ex19.seekTo(0)">ex19.seekTo(0)</button>
+    <button onclick="ex19.seekTo(1)">ex19.seekTo(1)</button>
+</p>
+
+<div id="ex18blob-0" class="blobStart"></div>
+<div id="ex18blob-1" class="blobStart"></div>
+<div id="ex18blob-2" class="blobStart"></div>
+
+<script type="text/javascript">
+var animators = [];
+for (var i=0; i<3; i++) {
+    animators[i] = Animator.apply("ex18blob-" + i, "blobEnd");
+}
+ex19 = new AnimatorChain(animators);
+// the AnimatorChain object has toggle(), play(), reverse() and seekTo(state) functions
+// just like Animator objects, so you can often use them where code expects an Animator
+</script>
+
+</body>
+</html>
