@@ -1,5 +1,5 @@
 ﻿/*  
-	Animator.js 1.1.10
+	Animator.js 1.1.11
 	
 	This library is released under the BSD license:
 
@@ -113,10 +113,15 @@ Animator.prototype = {
 		} finally {
 			this.options.onStep.call(this);
 			if (this.target == this.state) {
-				window.clearInterval(this.intervalId);
-				this.intervalId = null;
-				this.options.onComplete.call(this);
+				this.stop();
 			}
+		}
+	},
+	stop: function() {
+		if (this.intervalId) {
+			window.clearInterval(this.intervalId);
+			this.intervalId = null;
+			this.options.onComplete.call(this);
 		}
 	},
 	// shortcuts

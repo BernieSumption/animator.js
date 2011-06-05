@@ -391,6 +391,7 @@ ex8 = new Animator().addSubject(
 <p>When you click on a sample button in this article, you are calling toggle() on an animator object. There are a few more control functions:</p>
 <ul>
     <li><code>play()</code> plays the animation from the start to the end
+    <li><code>stop()</code> stops the animation at its currrent position
     <li><code>reverse()</code> plays the animation in reverse
     <li><code>seekTo(pos)</code> plays the animation from it's current position 
     <li><code>seekFromTo(from, to)</code>
@@ -402,6 +403,9 @@ ex8 = new Animator().addSubject(
         <td rowspan="4">
             <div id="controlExample" style="width: 30px; border: solid 1px #6688CC; height: 20px;">0%</div>
         </td>
+    </tr>
+    <tr>
+        <td><a href="javascript:window.controlAnim.stop();"><code>stop()</code></a></td>
     </tr>
     <tr>
         <td><a href="javascript:window.controlAnim.reverse();"><code>reverse()</code></a></td>
